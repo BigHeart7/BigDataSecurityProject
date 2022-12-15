@@ -1,0 +1,19 @@
+
+# IAM User template
+# https://github.com/awsdocs/aws-cloudformation-user-guide/blob/main/doc_source/aws-properties-iam-user.md
+
+Type: AWS::IAM::User
+Properties: 
+  [Groups](#cfn-iam-user-groups): 
+    - String
+  [LoginProfile](#cfn-iam-user-loginprofile): 
+    LoginProfile
+  [ManagedPolicyArns](#cfn-iam-user-managepolicyarns): 
+    - String
+  [Path](#cfn-iam-user-path): String
+  [PermissionsBoundary](#cfn-iam-user-permissionsboundary): String
+  [Policies](#cfn-iam-user-policies): 
+    - Policy
+  [Tags](#cfn-iam-user-tags): 
+    - [Tag](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html)
+  [UserName](#cfn-iam-user-username): String

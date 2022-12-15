@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS CloudFormation Template to create Assignment Datalake resources
+### 
+# Cloud Formation Parameters
+Parameters:
+  A0TS3DatalakeBucketName:
+    Type: String
+    Description: Bucket name for the BDS assignment
+  A0TPrefixGlueNotebookRolePolicy:
+    Type: String
+    Description: Prefix for glue notebook policy and role
+Resources:
+  A0TS3DatalakeBucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: !Ref A0TS3DatalakeBucketName
+      Tags:
+      - Key: bdscase
+        Value: A0
+  ###
+  # Database to contain glue catalog
+  A0TGlueCatalogDatabase:
+    Type: AWS::Glue::Database
+    Properties: 
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput: 
+        Name: a0tdatabaseassignment
+        Description: "Catalog of tables for the BDS Assignments Datalake"
+  ###
+  # Create the customer sentiment table which depends on the A0TGlueCatalogDatabase and S3 bucket
+  A0TGlueCustomersentimentTable:
+    DependsOn: 
+    - A0TGlueCatalogDatabase
+    - A0TS3DatalakeBucket
+    Type: AWS::Glue::Table
+    Properties: 
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: a0tdatabaseassignment
+      TableInput: 
+        Name: customersentiment
+        Description: Table for customer sentiment data
+        TableType: EXTERNAL_TABLE
+        StorageDescriptor:
+          Columns:
+          - Name: customersentimentid
+            Type: bigint
+          - Name: customerid
+            Type: bigint
+          - Name: sentimentdatetime
+            Type: string
+          - Name: netpromoterscore
+            Type: string
+          - Name: customersentimenttext
+            Type: string           
+          Location: !Sub s3://${A0TS3DatalakeBucketName}/datalake_main/customersentiment
+          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          SerdeInfo:
+            Parameters: 
+              field.delim: ","  
+            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  ###
+  # Create Role for Glue Notebook and interactive sessions
+  # Enable access to glue resources and S3
+  A0TRoleGlueNotebook:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - glue.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role for Glue Notebook. 
+      MaxSessionDuration: 43200
+      Policies:
+        - PolicyName: !Sub ${A0TPrefixGlueNotebookRolePolicy}Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "glue:*"
+                  - "s3:*"
+                  - "ec2:DescribeVpcEndpoints"
+                  - "ec2:DescribeRouteTables"
+                  - "ec2:CreateNetworkInterface"
+                  - "ec2:DeleteNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:DescribeSecurityGroups"
+                  - "ec2:DescribeSubnets"
+                  - "ec2:DescribeVpcAttribute"
+                  - "iam:ListRolePolicies"
+                  - "iam:GetRole"
+                  - "iam:GetRolePolicy"
+                  - "cloudwatch:PutMetricData"
+                  - "ec2:CreateTags"
+                  - "ec2:DeleteTags"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "s3:*"
+                Resource: 
+                  - "arn:aws:s3:::{A0TS3DatalakeBucketName}/*"
+                  - "arn:aws:s3:::{A0TS3DatalakeBucketName}/"
+              - Effect: Allow
+                Action: 
+                - "iam:GetRole"
+                - "iam:PassRole"
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/${A0TPrefixGlueNotebookRolePolicy}Role
+      RoleName: !Sub ${A0TPrefixGlueNotebookRolePolicy}Role
